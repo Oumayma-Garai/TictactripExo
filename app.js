@@ -1,11 +1,12 @@
+// Importation des modules
 const express = require("express");
 const mongoose = require("mongoose");
 const { userInfo } = require("os");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const app = express();
 const User = require("./user");
-var bodyParser = require('body-parser');
-
+var bodyParser = require("body-parser");
+// Configuration de la cnx à la base de données
 const options = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -16,7 +17,9 @@ const options = {
   family: 4, // Use IPv4, skip trying IPv6
   auto_reconnect: true,
 };
-const JWT_SECRET = "70469e0d-200f-4834-8f35"
+// definition d'un mot secret necessaire pour la generation d'un token
+const JWT_SECRET = "70469e0d-200f-4834-8f35";
+//Connexion a la base de donnée
 mongoose
   .connect("mongodb://localhost:27017/tictactrip", options)
   .then(() => console.log("connected to mongodb ..."))
@@ -24,14 +27,14 @@ mongoose
 
 const port = 5000;
 
+// format de la requete
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
+//generation d'un token par email
 app.post("/api/token", async (req, res) => {
   let email = req.body.email;
-  const token = jwt.sign({ email:email }
-    ,JWT_SECRET
-    );
+  const token = jwt.sign({ email: email }, JWT_SECRET);
   try {
     let usr = await User.findOne({ email }).exec();
     if (!usr) {
@@ -45,36 +48,41 @@ app.post("/api/token", async (req, res) => {
     res.send({ token });
   } catch (error) {
     console.log(error);
-    
+
     res.send({ error });
   }
-  
 });
 
-app.get("/", async (req, res) => {});
 app.use(bodyParser.text());
-
+// generation de requete pour justifier le texte
 app.post("/api/justify", async (req, res) => {
   try {
-    let tokenData = jwt.verify(req.headers.authorization.split(" ")[1],JWT_SECRET);
+    let tokenData = jwt.verify(
+      req.headers.authorization.split(" ")[1],
+      JWT_SECRET
+    );
     // next();
     if (tokenData) {
       let email = tokenData.email;
       let usr = await User.findOne({ email });
-      let today = new Date()
+      let today = new Date();
       var dd = today.getDate();
-      var mm = today.getMonth() ;
-  
+      var mm = today.getMonth();
+
       var yyyy = today.getFullYear();
-      
-      let date = usr.updatedAt
-      
-      if((date.getDate() != dd) || (date.getMonth() != mm ) || (date.getFullYear() != yyyy)){
-        usr.usedWords = 0 ;
+
+      let date = usr.updatedAt;
+
+      if (
+        date.getDate() != dd ||
+        date.getMonth() != mm ||
+        date.getFullYear() != yyyy
+      ) {
+        usr.usedWords = 0;
       }
       const text = req.body;
-      console.log("text ",text);
-      
+      console.log("text ", text);
+
       let mots = text.split(" ");
       let nbWords = mots.length;
       if (usr.usedWords + nbWords < 80000) {
@@ -89,17 +97,16 @@ app.post("/api/justify", async (req, res) => {
           cp += 80;
           if (cp < text.length) {
             index.push(cp);
-            if((text[cp] != " ") && (text[cp+1] != " ")){
-              justifyText.push(text.slice(cp - 80, cp-1)+"-");
-              cp = cp - 1
-            }else{
+            if (text[cp] != " " && text[cp + 1] != " ") {
+              justifyText.push(text.slice(cp - 80, cp - 1) + "-");
+              cp = cp - 1;
+            } else {
               justifyText.push(text.slice(cp - 80, cp));
             }
-            
           }
         }
 
-        justifyText.push(text.slice(cp-80, text.length));
+        justifyText.push(text.slice(cp - 80, text.length));
 
         var finalText = justifyText.join("\n");
         res.send(finalText);
@@ -111,7 +118,6 @@ app.post("/api/justify", async (req, res) => {
     return res.status(401).json({ msg: "auth failed" });
   }
 });
-
 app.listen(port, () => {
   console.log(`listening port ${port}`);
 });
